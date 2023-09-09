@@ -58,3 +58,9 @@ body {
   padding: 0.5rem;
   color: white;
 }
+
+#current-streak-message, #best-streak-message {
+  font-size: 1.1rem;
+  text-align: center;
+  padding: 0.5rem;
+}

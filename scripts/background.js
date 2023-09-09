@@ -126,6 +126,7 @@ const checkIfUserSolvedProblem = async (details) => {
         console.log(
           "Congratulations! You've solved the problem!, I'll see you tomorrow"
         );
+        updateStreak();
         userJustSubmitted = false;
         leetcodeProblemSolved = true;
         // They solved the problem, so no need to redirect anymore they're free, for now
@@ -141,21 +142,67 @@ const checkIfUserSolvedProblem = async (details) => {
   }
 };
 
+function updateStreak() {
+  chrome.storage.local.get(['lastCompleted', 'currentStreak', 'bestStreak'], (data) => {
+    const lastCompleted = new Date(data.lastCompleted ?? 0); // Returns Unix Epoch if item is null
+    const now = new Date();
+
+    if (lastCompleted.toDateString() === now.toDateString()) return;
+
+    // This is the first problem that was solved today
+    const currentStreak = parseInt(data.currentStreak ?? '0');
+    const bestStreak = parseInt(data.bestStreak ?? '0');
+
+    const newStreak = currentStreak + 1;
+
+    chrome.storage.local.set({
+      currentStreak: newStreak,
+      lastCompleted: now.toDateString()
+    });
+
+    if (newStreak > bestStreak) {
+      chrome.storage.local.set({bestStreak: newStreak});
+    }
+  });
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "testUpdateStreak") {
+    updateStreak();
+    console.log("updateStreak called");
+  }
+});
+
+function checkResetStreak() {
+  chrome.storage.local.get(['lastCompleted'], (data) => {
+    const lastCompleted = new Date(data.lastCompleted ?? 0); // Returns Unix Epoch if item is null
+    const now = new Date();
+    const yesterday = now.getDate() - 1;
+
+    if (lastCompleted.getDate() < yesterday) {
+      chrome.storage.local.set({
+        currentStreak: 0,
+      });
+    }
+  });
+}
+
 // Initialize the storage
 chrome.runtime.onInstalled.addListener(async () => {
   await updateStorage();
 });
 
 // Ensure the alarm is set when the extension starts
-chrome.alarms.get('updateStorage', (alarm) => {
+chrome.alarms.get('midnightAlarm', (alarm) => {
   if (!alarm) {
     // Find the time duration until midnight
     const currentTime = Date.now();
     const midnight = new Date();
     midnight.setHours(24, 0, 0, 0);
     const msUntilMidnight = midnight.getTime() - currentTime;
+    console.log(msUntilMidnight);
     //Create an alarm to update the storage every 24 hours at midnight
-    chrome.alarms.create('updateStorage', {
+    chrome.alarms.create('midnightAlarm', {
       // When means the time the alarm will fire, so in this case it will fire at midnight
       when: Date.now() + msUntilMidnight,
       // Period means the time between each alarm firing, so in this case it will fire every 24 hours after the first midnight alarm
@@ -164,9 +211,10 @@ chrome.alarms.get('updateStorage', (alarm) => {
   }
 });
 
-//Update the storage when the alarm is fired
+// Update the storage and check if streak should be reset when the alarm is fired
 chrome.alarms.onAlarm.addListener(async () => {
   updateStorage();
+  checkResetStreak();
 });
 
 chrome.runtime.onMessage.addListener(onMessageReceived);

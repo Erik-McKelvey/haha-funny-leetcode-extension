@@ -54,3 +54,15 @@ chrome.runtime.sendMessage(
     }
   }
 );
+
+// Display streaks
+chrome.storage.local.get(['currentStreak', 'bestStreak'], function(data) {
+  const currentStreak = data.currentStreak ?? 0;
+  const bestStreak = data.bestStreak ?? 0;
+
+  const currentStreakElement = document.getElementById('current-streak-message');
+  const bestStreakElement = document.getElementById('best-streak-message');
+
+  currentStreakElement.textContent = `Current Streak: ${currentStreak}`;
+  bestStreakElement.textContent = `Best Streak: ${bestStreak}`;
+});
